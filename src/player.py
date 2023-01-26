@@ -19,9 +19,8 @@ class Player():
     def set_team(self, team):
         self.team = team
 
-    def asDataFrame(self):
-        return pd.DataFrame({
-            "name": [self.name],
-            "elo": [self.elo],
-            "team": [self.team]
-        })
+    def asSeries(self):
+        return pd.Series(
+            [self.name, self.elo, self.team],
+            index=["name", "elo", "team"]
+        )

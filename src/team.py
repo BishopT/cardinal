@@ -11,8 +11,8 @@ class Team():
     def set_name(self, name):
         self.name = name
 
-    def asDataFrame(self):
-        return pd.DataFrame({
-            "name": [self.name],
-            "elo": [self.elo],
-        })
+    def asSeries(self):
+        return pd.Series([self.name, self.elo], index=["name", "elo"])
+
+    def __repr__(self):
+        return f'{self.name}'

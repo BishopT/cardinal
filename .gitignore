@@ -7040,3 +7040,7 @@ src/__pycache__/team.cpython-310.pyc
 src/__pycache__/tournament.cpython-310.pyc
 .env
 cardinal.log
+src/__pycache__/json_patch.cpython-310.pyc
+src/__pycache__/match.cpython-310.pyc
+src/__pycache__/ruleset.cpython-310.pyc
+src/__pycache__/simple_elimination.cpython-310.pyc
