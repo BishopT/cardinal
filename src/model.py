@@ -1,5 +1,45 @@
-import math
-import json
+import pandas as pd
+
+
+class Player():
+
+    def __init__(self, name):
+        self.__init__(name, None)
+
+    def __init__(self, name, elo):
+        self.id = None
+        self.name = name
+        self.elo = elo
+        self.team = None
+
+    def set_id(self, id):
+        self.id = id
+
+    def set_team(self, team):
+        self.team = team
+
+    def asSeries(self):
+        return pd.Series(
+            [self.name, self.elo, self.team],
+            index=["name", "elo", "team"]
+        )
+
+
+class Team():
+
+    def __init__(self, name, size):
+        self.name = name
+        self.size = size
+        self.elo = 0
+
+    def set_name(self, name):
+        self.name = name
+
+    def asSeries(self):
+        return pd.Series([self.name, self.elo], index=["name", "elo"])
+
+    def __repr__(self):
+        return f'{self.name}'
 
 
 class Match():

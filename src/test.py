@@ -1,17 +1,14 @@
-import tournament as t
-import ruleset
-import team as team
-import player as player
-
-import simple_elimination as se
-
 import json
-import json_patch
 
-tourney = t.Tournament()
+import json_patch
+from model import Player, Team
+from ruleset import SimpleElimination
+from tournament import Tournament
+
+tourney = Tournament()
 tourney.setup("Bishop", "test tournament", 2)
 
-tourney.add_phase(se.SimpleElimination(16))
+tourney.add_phase(SimpleElimination(16))
 
 tourney.add_player("Bishop", 1250)
 tourney.add_player("Zylbyrom", 1200)

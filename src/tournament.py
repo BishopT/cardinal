@@ -1,11 +1,9 @@
 from typing import List
+
 import pandas as pd
 
-import player
-import team
-import ruleset
-import match
-
+from model import Match, Player, Team
+from ruleset import CoreRuleSet
 
 # def set_value(df, index_col_name, index_value, value_col_name, value):
 #     df.loc[lambda df: df[index_col_name]
@@ -19,9 +17,9 @@ class Tournament:
         self.team_size = None
         self.registration_opened = False
         self.admins = []
-        self.players: List[player.Player] = []
-        self.teams: List[team.Team] = []
-        self.phases: List[ruleset.Ruleset] = []
+        self.players: List[Player] = []
+        self.teams: List[Team] = []
+        self.phases: List[CoreRuleSet] = []
 
         # self.df_matches = pd.DataFrame({
         #     "#": [],
@@ -45,7 +43,7 @@ class Tournament:
         self.team_size = team_size
 
     def add_player(self, name, elo):
-        p = player.Player(name, elo)
+        p = Player(name, elo)
         self.players.append(p)
         # self.df_players = pd.concat(
         #     [self.df_players, p.asDataFrame()], ignore_index=True)
@@ -58,7 +56,7 @@ class Tournament:
     def add_to_team(self, team_name, *players_names):
         t = self.get_team(team_name)
         if t == None:
-            t = team.Team(team_name, self.team_size)
+            t = Team(team_name, self.team_size)
             self.teams.append(t)
         for name in players_names:
             self.get_player(name).set_team(team_name)
@@ -69,7 +67,7 @@ class Tournament:
             #     #                     == player, lambda df: ['team']] = name
             #     set_value(self.df_players, 'name', player_name, 'team', team_name)
 
-    def add_phase(self, ruleset: ruleset):
+    def add_phase(self, ruleset: CoreRuleSet):
         self.phases.append(ruleset)
 
     def get_player(self, name):
@@ -84,7 +82,7 @@ class Tournament:
                 return t
         return None
 
-    def get_phase(self, phase_number) -> ruleset:
+    def get_phase(self, phase_number) -> CoreRuleSet:
         return self.phases[phase_number - 1]
 
     def df_players(self):
