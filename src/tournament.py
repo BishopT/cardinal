@@ -1,9 +1,9 @@
-from typing import List
+from typing import List, Dict
 
 import pandas as pd
 
 from model import Match, Player, Team
-from ruleset import CoreRuleSet
+from ruleset import RuleSet
 
 # def set_value(df, index_col_name, index_value, value_col_name, value):
 #     df.loc[lambda df: df[index_col_name]
@@ -19,7 +19,8 @@ class Tournament:
         self.admins = []
         self.players: List[Player] = []
         self.teams: List[Team] = []
-        self.phases: List[CoreRuleSet] = []
+        self.phases: Dict[int, RuleSet] = {}
+        self.current_phase_idx = 0
 
         # self.df_matches = pd.DataFrame({
         #     "#": [],
@@ -67,8 +68,8 @@ class Tournament:
             #     #                     == player, lambda df: ['team']] = name
             #     set_value(self.df_players, 'name', player_name, 'team', team_name)
 
-    def add_phase(self, ruleset: CoreRuleSet):
-        self.phases.append(ruleset)
+    def add_phase(self, order: int, ruleset: RuleSet):
+        self.phases[order] = ruleset
 
     def get_player(self, name):
         for p in self.players:
@@ -82,8 +83,11 @@ class Tournament:
                 return t
         return None
 
-    def get_phase(self, phase_number) -> CoreRuleSet:
-        return self.phases[phase_number - 1]
+    def get_current_phase(self) -> RuleSet:
+        return self.get_phase(self.current_phase_idx)
+
+    def get_phase(self, phase_number) -> RuleSet:
+        return self.phases[phase_number]
 
     def df_players(self):
         d = {}
@@ -99,4 +103,6 @@ class Tournament:
 
     def init(self):
         for t in self.teams:
-            self.phases[0].add_team(t)
+            first_phase = sorted(self.phases)[0]
+            self.current_phase_idx = first_phase
+            self.phases[first_phase].add_team(t)

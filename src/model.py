@@ -1,3 +1,4 @@
+import math
 import pandas as pd
 
 
@@ -44,7 +45,8 @@ class Team():
 
 class Match():
 
-    def __init__(self, bo, blue_team, red_team):
+    def __init__(self, id, bo, blue_team, red_team):
+        self.id = id
         self.bo = bo
         self.blue_team = blue_team
         self.red_team = red_team
@@ -61,7 +63,12 @@ class Match():
         return {self.blue_team: self.bo_blue_score, self.red_team: self.bo_red_score}
 
     def add_game_result(self, blue_score, red_score):
-        if (len(self.blue_score) < bo & self.ended):
+        # print(f'self.bo_blue_score={self.bo_blue_score}')
+        # print(f'self.bo_red_score={self.bo_red_score}')
+        # print(f'self.blue_score={self.blue_score}')
+        # print(f'self.red_score={self.red_score}')
+        # print(f'self.ended={self.ended}')
+        if (len(self.blue_score) < self.bo and not self.ended):
             self.blue_score.append(blue_score)
             self.red_score.append(red_score)
         else:
@@ -76,14 +83,19 @@ class Match():
                 self.red_team, self.red_score,
                 self.get_winner()]
 
-    def compute_bo(self):
+    def compute_bo(self) -> bool:
         self.bo_blue_score = 0
         self.bo_red_score = 0
-        for i in len(blue_score):
-            self.bo_blue_score += 1 if (blue_score > red_score) else 0
-            self.bo_red_score += 1 if (red_score > blue_score) else 0
+        for i in range(len(self.blue_score)):
+            # print(f'self.blue_score[i]={self.blue_score[i]}')
+            # print(f'self.red_score[i]={self.red_score[i]}')
+            self.bo_blue_score += 1 if (self.blue_score[i] >
+                                        self.red_score[i]) else 0
+            self.bo_red_score += 1 if (self.red_score[i]
+                                       > self.blue_score[i]) else 0
         if self.bo_blue_score == math.ceil(self.bo / 2):
             self.ended = True
+        return self.ended
 
     def get_winner(self):
         if (self.bo_blue_score == self.bo_red_score):

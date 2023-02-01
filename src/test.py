@@ -8,7 +8,7 @@ from tournament import Tournament
 tourney = Tournament()
 tourney.setup("Bishop", "test tournament", 2)
 
-tourney.add_phase(SimpleElimination(16))
+tourney.add_phase(1, SimpleElimination("qualif", 16))
 
 tourney.add_player("Bishop", 1250)
 tourney.add_player("Zylbyrom", 1200)
@@ -53,6 +53,20 @@ print(tourney.df_players())
 print('')
 
 tourney.init()
-bracket = tourney.get_phase(1).init_bracket(1)
+qualif = tourney.get_phase(1)
+bracket = qualif.init_bracket(3)
 print(json.dumps(bracket, indent=4))
-print(tourney.get_phase(1).get_standings())
+print(tourney.get_current_phase().get_standings())
+
+phase = tourney.get_current_phase()
+phase.start()
+
+m = phase.next_match('Lexav')
+# print(m)
+phase.report_match_result(m, (5, 3), (4, 6), (2, 1))
+# print(m)
+print(tourney.get_current_phase().get_bracket())
+
+m2 = phase.next_match('fuka')
+phase.report_match_result(m2, (1, 2), (3, 2), (4, 1))
+print(tourney.get_current_phase().get_bracket())
