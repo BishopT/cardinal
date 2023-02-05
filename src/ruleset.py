@@ -7,6 +7,10 @@ import pandas as pd
 
 from model import Match, Team
 
+WINNING_POINTS = 3
+LOSING_POINTS = 0
+DRAW_POINTS = 1
+
 
 class RuleSet(ABC):
 
@@ -25,17 +29,22 @@ class RuleSet(ABC):
     def get_teams(self):
         return self.pool
 
+    def get_team(self, team_name):
+        for t in self.pool:
+            if t.name == team_name:
+                return t
+
     def get_match(self, id: str) -> Match:
         return self.bracket[id]
 
-    def get_history(self, team):
+    def get_history(self):
         d = {}
-        for i in len(self.match_history):
+        for i in range(len(self.match_history)):
             d[f'{i}'] = pd.Series(self.match_history[i].get_result(), index=[
                                   "blue team", "blue score",
                                   "red team", "red score",
                                   "winner"])
-        return pd.DataFrame(d)
+        return pd.DataFrame(d).T
 
     @abstractmethod
     def next_match(self, team):
@@ -45,19 +54,41 @@ class RuleSet(ABC):
     def start(self):
         pass
 
-    @abstractmethod
+    # @abstractmethod
     def get_standings(self):
-        pass
+        for t in self.pool:
+            t.points = 0
+            t.goals_scored = 0
+            t.goals_taken = 0
+        # print('standings>>>>')
+        for m in list(filter(lambda x: x.get_winner() != None, self.match_history)):
+            # print(f'm.get_winner()={m.get_winner()}')
+            if m.get_winner() == m.blue_team:
+                # print('blue_team')
+                blue_team = self.get_team(m.blue_team)
+                blue_team.points += WINNING_POINTS
+                blue_team.goals_scored += sum(m.blue_score)
+                blue_team.goals_taken += sum(m.red_score)
+            else:
+                # print('red team')
+                red_team = self.get_team(m.red_team)
+                red_team.points += WINNING_POINTS
+                red_team.goals_scored += sum(m.red_score)
+                red_team.goals_taken += sum(m.blue_score)
+        d = {}
+        for i in range(len(self.pool)):
+            d[f'{i}'] = self.pool[i].asSeries()
+        return pd.DataFrame(d).T.sort_values(['points', 'goals diff'], ascending=[False, False], ignore_index=True)
 
-    @abstractmethod
+    @ abstractmethod
     def init_bracket(self):
         pass
 
-    @abstractmethod
+    @ abstractmethod
     def get_bracket(self):
         pass
 
-    @abstractmethod
+    @ abstractmethod
     def report_match_result(self, match: Match, *games_score: tuple):
         pass
 
@@ -85,8 +116,8 @@ class SimpleElimination(RuleSet):
     def get_bracket(self) -> pd.DataFrame:
         return pd.DataFrame(self.bracket, index=["matches"]).T.sort_index(ascending=False)
 
-    def get_standings(self) -> pd.DataFrame:
-        pass
+    # def get_standings(self) -> pd.DataFrame:
+    #     pass
 
     def report_match_result(self, match: Match, *games_score: tuple):
         if (self.running):
@@ -94,32 +125,35 @@ class SimpleElimination(RuleSet):
                 blue_score, red_score = gs
                 match.add_game_result(blue_score, red_score)
                 match.compute_bo()
-                # print(f'match.ended={match.ended}')
             if (match.ended):
+                print(f'match ended: {match}')
+                self.match_queue.remove(match.id)
+                self.match_history.append(match)
                 winner = match.get_winner()
-                # print(f'winner={winner}')
                 replace = f'winner({match.id})'
-                # print(f'replace={replace}')
                 next_match = self.next_match(replace)
-                nid = next_match.id
-                nblue = next_match.blue_team
-                # print(f'nblue={nblue}')
-                nred = next_match.red_team
-                if replace == nblue:
-                    self.bracket[nid] = Match(
-                        nid, next_match.bo, winner, nred)
-                elif replace == nred:
-                    self.bracket[nid] = Match(
-                        nid, next_match.bo, nblue, winner)
-                else:
-                    raise Exception(f"Cannot program next match for {winner}")
-                # print(f'next_match={self.bracket[nid]}')
+                if (next_match != None):
+                    nid = next_match.id
+                    nblue = next_match.blue_team
+                    nred = next_match.red_team
+                    if replace == nblue:
+                        self.bracket[nid] = Match(
+                            nid, next_match.bo, winner, nred)
+                    elif replace == nred:
+                        self.bracket[nid] = Match(
+                            nid, next_match.bo, nblue, winner)
+                    else:
+                        raise Exception(
+                            f"Cannot program next match for {winner}")
+                else:  # no more match in phase
+                    self.running = False
+
         else:
             raise Exception('Cannot report match. phase not started')
 
     def init_bracket(self, bo) -> dict:
         no_of_teams = len(self.pool)
-        print(f'pool={self.pool}, {no_of_teams} teams')
+        # print(f'pool={self.pool}, {no_of_teams} teams')
 
         bracket_depth = int(math.ceil(math.log(no_of_teams, 2)))
         self.bracket = {}

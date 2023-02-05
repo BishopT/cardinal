@@ -28,16 +28,19 @@ class Player():
 
 class Team():
 
-    def __init__(self, name, size):
+    def __init__(self, name: str, size: int):
         self.name = name
         self.size = size
         self.elo = 0
+        self.points = 0
+        self.goals_scored = 0
+        self.goals_taken = 0
 
-    def set_name(self, name):
+    def set_name(self, name: str):
         self.name = name
 
     def asSeries(self):
-        return pd.Series([self.name, self.elo], index=["name", "elo"])
+        return pd.Series([self.name, self.elo, self.points, self.goals_scored - self.goals_taken], index=["name", "elo", "points", "goals diff"])
 
     def __repr__(self):
         return f'{self.name}'
@@ -45,7 +48,7 @@ class Team():
 
 class Match():
 
-    def __init__(self, id, bo, blue_team, red_team):
+    def __init__(self, id: str, bo: int, blue_team: str, red_team: str):
         self.id = id
         self.bo = bo
         self.blue_team = blue_team
@@ -87,13 +90,11 @@ class Match():
         self.bo_blue_score = 0
         self.bo_red_score = 0
         for i in range(len(self.blue_score)):
-            # print(f'self.blue_score[i]={self.blue_score[i]}')
-            # print(f'self.red_score[i]={self.red_score[i]}')
             self.bo_blue_score += 1 if (self.blue_score[i] >
                                         self.red_score[i]) else 0
             self.bo_red_score += 1 if (self.red_score[i]
                                        > self.blue_score[i]) else 0
-        if self.bo_blue_score == math.ceil(self.bo / 2):
+        if self.bo_blue_score == math.ceil(self.bo / 2) or self.bo_red_score == math.ceil(self.bo / 2):
             self.ended = True
         return self.ended
 

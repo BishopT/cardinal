@@ -56,17 +56,63 @@ tourney.init()
 qualif = tourney.get_phase(1)
 bracket = qualif.init_bracket(3)
 print(json.dumps(bracket, indent=4))
+
 print(tourney.get_current_phase().get_standings())
 
 phase = tourney.get_current_phase()
 phase.start()
 
 m = phase.next_match('Lexav')
-# print(m)
 phase.report_match_result(m, (5, 3), (4, 6), (2, 1))
-# print(m)
+print('============== STANDINGS ====================')
+print(tourney.get_current_phase().get_standings())
+print('')
+print('============== BRACKET ====================')
 print(tourney.get_current_phase().get_bracket())
+print('')
 
-m2 = phase.next_match('fuka')
-phase.report_match_result(m2, (1, 2), (3, 2), (4, 1))
+m = phase.next_match('fuka')
+phase.report_match_result(m, (1, 2), (3, 2), (4, 1))
+
+
+m = phase.next_match('NiWi')
+phase.report_match_result(m, (0, 8), (6, 1), (5, 6))
+print('')
+
+m = phase.next_match('NexNec')
+phase.report_match_result(m, (8, 2), (4, 9), (4, 10))
+print('')
+
+# END OF FIRST ROUND
+
+print('============== BRACKET ====================')
 print(tourney.get_current_phase().get_bracket())
+print('')
+
+print('============== STANDINGS ====================')
+print(tourney.get_current_phase().get_standings())
+print('')
+
+m = phase.next_match('Lexav')
+print(m)
+phase.report_match_result(m, (2, 9), (0, 5))
+print('')
+
+m = phase.next_match('kafai')
+phase.report_match_result(m, (8, 4), (2, 8), (7, 1))
+print('')
+
+m = phase.next_match('kafai')
+phase.report_match_result(m, (8, 1), (5, 9), (4, 9))
+print('')
+
+print('============== STANDINGS ====================')
+print(tourney.get_current_phase().get_standings())
+print('')
+print('============== BRACKET ====================')
+print(tourney.get_current_phase().get_bracket())
+print('')
+
+print('============== MATCH HISTORY ====================')
+print(tourney.get_current_phase().get_history())
+print('')
