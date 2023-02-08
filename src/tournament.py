@@ -45,7 +45,8 @@ class Tournament:
 
     def add_player(self, name, elo):
         p = Player(name, elo)
-        self.players.append(p)
+        if name not in list(map(lambda x: x.name, self.players)):
+            self.players.append(p)
         # self.df_players = pd.concat(
         #     [self.df_players, p.asDataFrame()], ignore_index=True)
 

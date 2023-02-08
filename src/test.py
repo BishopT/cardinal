@@ -31,8 +31,8 @@ tourney.add_player("ragnarok", 1350)
 tourney.add_to_team("Race", "centice", "ragnarok")
 
 tourney.add_player("nexto", 1250)
-tourney.add_player("necto", 1350)
-tourney.add_to_team("NexNec", "nexto", "necto")
+tourney.add_player("WizardsMonkeys", 1350)
+tourney.add_to_team("NexWiz", "nexto", "WizardsMonkeys")
 
 tourney.add_player("kaydop", 1200)
 tourney.add_player("fairy", 1150)
@@ -79,7 +79,7 @@ m = phase.next_match('NiWi')
 phase.report_match_result(m, (0, 8), (6, 1), (5, 6))
 print('')
 
-m = phase.next_match('NexNec')
+m = phase.next_match('NexWiz')
 phase.report_match_result(m, (8, 2), (4, 9), (4, 10))
 print('')
 
