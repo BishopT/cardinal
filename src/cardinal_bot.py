@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 import configparser
 import logging
+import re
 
 import discord
 
@@ -81,14 +82,15 @@ admin = bot.create_group("admin", "administrate cardinal")
 
 @admin.command(name='exit', description='shutdown the application')
 @discord.guild_only()
-async def exit(ctx):
+async def exit(ctx: discord.ApplicationContext):
     if is_owner(ctx):
         await ctx.respond(f"I'm retiring now. See you soon {ctx.guild}' folks!")
         await bot.close()
 
 
 @admin.command(description="Sends the bot's latency.")
-async def ping(ctx):  # a slash command will be created with the name "ping"
+# a slash command will be created with the name "ping"
+async def ping(ctx: discord.ApplicationContext):
     latency_ms = (int)(bot.latency * 1000)
     await ctx.respond(f"Pong! Latency is {latency_ms}ms")
 
@@ -99,13 +101,13 @@ greetings = bot.create_group("greetings", "Greet people")
 
 
 @greetings.command(name='hello', description='Be polite, come say hi :)')
-async def hello_world(ctx):
+async def hello_world(ctx: discord.ApplicationContext):
     # user: discord.User = ctx.Author
     await ctx.respond(f'Hey! Happy to see you there {ctx.author.mention}')
 
 
 @greetings.command(name='bye', description='let me know you leave for now')
-async def bye(ctx):
+async def bye(ctx: discord.ApplicationContext):
     if (is_owner(ctx)):
         await ctx.respond(f"Good Bye, {ctx.author.mention}! I hope I'll see you again soon")
 
@@ -120,12 +122,14 @@ def is_tourney_admin(user_id, tourney: Tournament):
 
 
 @tournaments.command(description="create a tournament")
-async def create(ctx, tournament_name: str, team_size: int):
+async def create(ctx: discord.ApplicationContext, tournament_name: str, team_size: int):
     if tournament_name not in tourneys_dict:
         tourney = Tournament()
         tourney.setup(ctx.author.id, tournament_name, team_size)
         tourneys_dict[tournament_name] = tourney
-        await ctx.respond(f'Tournament: {tournament_name}', view=TournamentView(ctx))
+        v = TournamentView(ctx, tournament_name)
+        main, embed = v.get_tournament_presentation()
+        await ctx.respond(main, embed=embed, view=v)
     else:
         await ctx.respond(f'Tournament ***{tournament_name}*** already exists. Please delete first or choose another name.')
 
@@ -144,26 +148,97 @@ def delete(tournament_name: str, user):
 
 
 @tournaments.command(name='del', description="delete a tournament")
-async def delete_command(ctx, tournament_name: str):
+async def delete_command(ctx: discord.ApplicationContext, tournament_name: str):
     success, feedback = delete(tournament_name, ctx.author)
     await ctx.respond(feedback)
 
+phase = tournaments.create_subgroup("phase", "manage tournament phases")
 
-@tournaments.command(description="add a tournament phase")
-async def add_phase(ctx, tournament_name: str, rule: str, phase_order: int, phase_name: str, pool_size):
+
+@phase.command(name='add', description="add a tournament phase")
+async def add_phase(ctx: discord.ApplicationContext, tournament_name: str, rule: str, phase_order: int, phase_name: str, pool_size):
+    # if tournament_name in tourneys_dict:
+    #     t = tourneys_dict[tournament_name]
+    #     if (is_tourney_admin(ctx, tourneys_dict[tournament_name])):
+    #         # if phase_name == "SE":
+    #         r = SimpleElimination(phase_name, pool_size)
+    #         t.add_phase(phase_order, r)
+    await ctx.respond(f'{phase_name} tournament phase added to {tournament_name}')
+
+# player = tournaments.create_subgroup("player", "manage tournament players")
+
+
+# @player.command(name="add", description="register an new player")
+async def add_player(ctx: discord.ApplicationContext, tournament_name: str, player_name: str):
     if tournament_name in tourneys_dict:
-        t = tourneys_dict[tournament_name]
+        t: Tournament = tourneys_dict[tournament_name]
         if (is_tourney_admin(ctx, tourneys_dict[tournament_name])):
-            if phase_name == "SE":
-                r = SimpleElimination(phase_name, pool_size)
-            t.add_phase(phase_order, r)
+            t.add_player(player_name, 0)
+            await ctx.respond(f'{player_name} player added to {tournament_name}')
+
+# team = tournaments.create_subgroup('team')
+
+
+# @team.command(name='add', description='create new team')
+async def add_team(ctx: discord.ApplicationContext, tournament_name: str, team_name: str, * players_name: str):
+    if tournament_name in tourneys_dict:
+        t: Tournament = tourneys_dict[tournament_name]
+        if (is_tourney_admin(ctx, tourneys_dict[tournament_name])):
+            t.add_to_team(team_name, players_name)
+            await ctx.respond(f'{team_name} team added to {tournament_name}')
 
 
 class TournamentView(discord.ui.View):
 
-    def __init__(self, ctx):
+    def __init__(self, ctx, tournament_name: str):
         super().__init__(timeout=None)
         self.ctx = ctx
+        self.tournament_name = tournament_name
+
+    def get_tournament_presentation(self):
+        players_df = tourneys_dict[self.tournament_name].df_players()
+        teams_df = tourneys_dict[self.tournament_name].df_teams()
+        try:
+            players_field = """
+                            {}
+                            """.format("\n".join(players_df["name"].values.flatten()))
+
+        except:
+            players_field = ''
+        try:
+            teams_field = teams_df["name"]
+        except:
+            teams_field = ''
+        try:
+            standings_field = ''
+        except:
+            standings_field = ''
+
+        embed = discord.Embed(
+            title=f'{self.tournament_name} tournament',
+            description=f'Welcome in {self.tournament_name} tournament. Register, get your next opponents, follow results... Stay tuned!',
+            # Pycord provides a class with default colors you can choose from
+            color=discord.Colour.gold(),
+        )
+        embed.add_field(name="Tournament description & rules",
+                        value="Bla Bla ", inline=False)
+
+        embed.add_field(name="PLAYERS",
+                        value=players_field, inline=True)
+        embed.add_field(name="TEAMS",
+                        value=teams_field, inline=True)
+        embed.add_field(name="STANDINGS",
+                        value=standings_field, inline=True)
+
+        # footers can have icons too
+        embed.set_footer(text="Footer! No markdown here.")
+        embed.set_author(name=f'{self.ctx.author.name}',
+                         icon_url=self.ctx.author.avatar.url)
+        embed.set_thumbnail(
+            url="https://cdn.discordapp.com/attachments/1062914387934990459/1063874292753903676/Logo_Transparent_noir.png")
+        # embed.set_image(
+        # url="https://cdn.discordapp.com/attachments/1062914387934990459/1063874292753903676/Logo_Transparent_noir.png")
+        return ('', embed)
 
     async def on_timeout(self):
         for child in self.children:
@@ -172,20 +247,20 @@ class TournamentView(discord.ui.View):
 
     @discord.ui.button(label="Register", row=0,  style=discord.ButtonStyle.primary)
     async def register_button_callback(self, button, interaction):
-        tournament_name = interaction.message.content.split(':')[1].strip()
-        tourneys_dict[tournament_name].add_player()
-        await interaction.response.edit_message(f'{interaction.message.content}')
+        tourneys_dict[self.tournament_name].add_player(
+            interaction.user.mention, 0)
+        main, embed = self.get_tournament_presentation()
+        await interaction.response.edit_message(content=main, embed=embed)
 
     @discord.ui.button(label="Delete Tournament", row=1, style=discord.ButtonStyle.danger)
     async def del_button_callback(self, button, interaction):
-        tournament_name = interaction.message.content.split(':')[1].strip()
-        success, feedback = delete(tournament_name, interaction.user)
+        success, feedback = delete(self.tournament_name, interaction.user)
         if success:
             button.disabled = True  # assuming it can't fail
             button.label = feedback
             await interaction.response.edit_message(content=feedback, view=None)
         else:
-            await interaction.response.send_message(feedback)
+            await interaction.response.send_message(feedback, view=self)
 
 
 bot.run(TOKEN)
