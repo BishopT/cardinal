@@ -204,7 +204,7 @@ class TournamentView(discord.ui.View):
 
     @discord.ui.button(label="Start next phase (admin only)", row=1, style=discord.ButtonStyle.primary)
     async def start_button_callback(self, button, interaction):
-        if self.manager.is_admin(self.tournament_name, interaction.user.id):
+        if self.manager.is_admin(self.tournament_name, str(interaction.user.id)):
             t: Tournament = self.manager.get_tournament(self.tournament_name)
             # TODO: move this function into tournamentMgr and return (success, feedback)
             t.get_current_phase().init_bracket()
@@ -236,7 +236,7 @@ class DeleteConfirmationView(discord.ui.View):
     @discord.ui.button(label="Delete", row=0, style=discord.ButtonStyle.danger)
     async def confirmation_button_callback(self, button, interaction):
         success, feedback = self.view.manager.delete_tournament(
-            self.view.tournament_name, interaction.user.id)
+            self.view.tournament_name, str(interaction.user.id))
         if success:
             button.disabled = True
             button.label = feedback

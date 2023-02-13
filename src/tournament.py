@@ -66,7 +66,7 @@ class Tournament:
     def get_phase(self, phase_number) -> RuleSet:
         return self.phases[phase_number]
 
-    def is_admin(self, user_id) -> bool:
+    def is_admin(self, user_id: str) -> bool:
         return user_id in self.admins
 
     def df_players(self):
