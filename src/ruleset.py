@@ -1,7 +1,7 @@
 import math
 import time
 from abc import ABC, abstractmethod
-from typing import List
+from enum import Enum
 
 import pandas as pd
 
@@ -12,12 +12,35 @@ LOSING_POINTS = 0
 DRAW_POINTS = 1
 
 
+class RulesetEnum(Enum):
+    SIMPLE_ELIMINATION = 'Simple-Elimination'
+    DOUBLE_ELIMINATION = 'Double-Elimination'
+    ROUND_ROBIN = 'Round-Robin'
+    SWISS_SYSTEM = 'Swiss-System'
+
+    @classmethod
+    def aslist(cls):
+        return [e.value for e in cls]
+
+    def get_ruleset(self, name: str, pool_size: int, bo: int):
+        if self is RulesetEnum.SIMPLE_ELIMINATION:
+            return SimpleElimination(name, self, pool_size, bo)
+        if self is RulesetEnum.DOUBLE_ELIMINATION:
+            pass  # TODO: implement double elimination bracket
+        if self is RulesetEnum.ROUND_ROBIN:
+            pass  # TODO: implement round robin bracket
+        if self is RulesetEnum.SWISS_SYSTEM:
+            pass  # TODO: implement swiss system bracket
+
+
 class RuleSet(ABC):
 
-    def __init__(self, name, size):
+    def __init__(self, name: str, rules_type: RulesetEnum, size: int, bo: int):
         self.name = name
+        self.rules_type = rules_type
         self.pool: list[Team] = []
         self.poolsize_max = size
+        self.bo = bo
         self.match_history: list[Match] = []
         self.bracket = {}
         self.match_queue: list[str] = []
@@ -92,6 +115,12 @@ class RuleSet(ABC):
     def report_match_result(self, match: Match, *games_score: tuple):
         pass
 
+    def asSeries(self):
+        return pd.Series(
+            [self.name, self.poolsize_max, self.rules_type.value, self.running],
+            index=["name", "size", "type", "running"]
+        )
+
 
 class SimpleElimination(RuleSet):
 
@@ -104,14 +133,6 @@ class SimpleElimination(RuleSet):
 
     def start(self):
         self.running = True
-        # while (self.running):
-        #     time.sleep(2)
-
-        #     for m in list(map(self.get_match, self.match_queue)):
-        #         # m = self.bracket[m_id]
-        #         if (m.get_winner() != None):
-        #             self.match_queue.remove(m)
-        #             self.match_history.append(m)
 
     def get_bracket(self) -> pd.DataFrame:
         return pd.DataFrame(self.bracket, index=["matches"]).T.sort_index(ascending=False)

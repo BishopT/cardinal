@@ -25,6 +25,9 @@ class Player():
             index=["name", "elo", "team"]
         )
 
+    def __repr__(self):
+        return f'{self.name} ({self.team})'
+
 
 class Team():
 
