@@ -1,4 +1,5 @@
 cardinal-bot-env/*
 src/__pycache__/*
+src/cogs/__pycache__/*
 .env
-cardinal.log
+*.log
