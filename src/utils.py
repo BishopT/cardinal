@@ -33,7 +33,7 @@ conf = configparser.ConfigParser()
 conf.read(CONFIG_FILE)
 
 # bot section
-OWNER_ID = int(conf.get(CONF_SECTION_BOT, CONF_PROP_OWNER))
+OWNER_ID = conf.get(CONF_SECTION_BOT, CONF_PROP_OWNER)
 # BOT_CMD_PREFIX = conf.get(CONF_SECTION_BOT, CONF_PROP_BOT_CMD_PREFIX)
 # logging section
 LOG_FILE = conf.get(CONF_SECTION_LOGGING, CONF_PROP_LOG_FILE)

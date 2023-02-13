@@ -4,7 +4,6 @@ import discord
 
 import utils
 
-
 logger = logging.getLogger('discord')
 logger.setLevel(level=utils.LOG_LEVEL)
 log_file_handler = logging.FileHandler(
@@ -13,7 +12,7 @@ logger.addHandler(log_file_handler)
 # discord.utils.setup_logging(handler=log_file_handler, level=LOG_LEVEL)
 
 intents = discord.Intents.default()
-intents.message_content = True
+# intents.message_content = True
 
 bot = discord.Bot(owner_id=utils.OWNER_ID)
 

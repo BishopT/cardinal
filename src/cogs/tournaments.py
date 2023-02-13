@@ -3,8 +3,8 @@ import math
 import discord
 from discord.ext import commands
 
-from ..ruleset import RulesetEnum
-from ..tournament import Tournament, TournamentsMgr
+from ruleset import RulesetEnum
+from tournament import Tournament, TournamentsMgr
 
 
 def setup(bot):  # this is called by Pycord to set up the cog
@@ -31,15 +31,15 @@ class Tournaments(commands.Cog):
         self.manager = TournamentsMgr()
 
     async def ac_tournaments(self, ctx: discord.AutocompleteContext):
-        return self.manager.getTournamentList()
+        return self.manager.get_tournaments_list()
 
     async def ac_players(self, ctx: discord.AutocompleteContext):
-        t: Tournament = self.manager.getTournament(ctx.options['tournament_name'])
+        t: Tournament = self.manager.get_tournament(ctx.options['tournament_name'])
         return t.df_players['name'].values.flatten()
 
     @tournaments.command(description="create a tournament")
     async def create(self, ctx: discord.ApplicationContext, tournament_name: str, team_size: int, logo_url=None):
-        if self.manager.createTournament(tournament_name, team_size, ctx.user.id):
+        if self.manager.create_tournament(tournament_name, team_size, str(ctx.user.id)):
             v = TournamentView(ctx, tournament_name, self.manager, logo_url)
             main, embed = v.get_tournament_presentation()
             await ctx.respond(content=main, embed=embed, view=v)
@@ -50,8 +50,8 @@ class Tournaments(commands.Cog):
     @tournaments.command(name='del', description="delete a tournament")
     async def delete_command(self, ctx: discord.ApplicationContext,
                              tournament_name: discord.Option(str, autocomplete=ac_tournaments)):
-        success, feedback = self.manager.deleteTournament(
-            tournament_name, ctx.user.id)
+        success, feedback = self.manager.delete_tournament(
+            tournament_name, str(ctx.user.id))
         await ctx.respond(feedback)
 
     phase = tournaments.create_subgroup("phase", "manage tournament phases")
@@ -63,7 +63,7 @@ class Tournaments(commands.Cog):
                         pool_size: discord.Option(int, autocomplete=ac_pool),
                         bo: discord.Option(int, autocomplete=ac_bo)):
         self.manager.add_phase(tournament_name, phase_name,
-                               rules_name, pool_size, bo, ctx.user.id)
+                               rules_name, pool_size, bo, str(ctx.user.id))
         await ctx.respond(f'{phase_name} tournament phase added to {tournament_name}')
 
     player = tournaments.create_subgroup("player", "manage tournament players")
@@ -72,14 +72,14 @@ class Tournaments(commands.Cog):
     async def add_player(self, ctx: discord.ApplicationContext,
                          tournament_name: discord.Option(str, autocomplete=ac_tournaments), player_name: str):
         success, feedback = self.manager.add_player(
-            tournament_name, player_name, ctx.user.id)
+            tournament_name, player_name, str(ctx.user.id))
         await ctx.respond(feedback)
 
     @player.command(name='remove', description="remove a registered player")
     async def remove_player(self, ctx: discord.ApplicationContext,
                             tournament_name: discord.Option(str, autocomplete=ac_tournaments), player_name: str):
         success, feedback = self.manager.remove_player(
-            tournament_name, player_name, ctx.user.id)
+            tournament_name, player_name, str(ctx.user.id))
         await ctx.respond(feedback)
 
     team = tournaments.create_subgroup('team')
@@ -89,7 +89,7 @@ class Tournaments(commands.Cog):
                        tournament_name: discord.Option(str, autocomplete=ac_tournaments), team_name: str,
                        players_name: discord.Option(str)):
         success, feedback = self.manager.add_team(
-            tournament_name, team_name, players_name, user_id=ctx.user.id)
+            tournament_name, team_name, players_name, user_id=str(ctx.user.id))
         await ctx.respond(feedback)
 
 
@@ -99,14 +99,14 @@ class TournamentView(discord.ui.View):
         super().__init__(timeout=None)
         self.ctx = ctx
         self.tournament_name = tournament_name
-        self.manager = manager
+        self.manager: TournamentsMgr = manager
         if logo_url is not None:
             self.logo_url = logo_url
         else:
             self.logo_url = ctx.user.avatar.url
 
     def get_tournament_presentation(self):
-        t: Tournament = self.manager.getTournament(self.tournament_name)
+        t: Tournament = self.manager.get_tournament(self.tournament_name)
         players_df = t.df_players()
         teams_df = t.df_teams()
         phases_df = t.df_phases().astype('str')
@@ -121,7 +121,7 @@ class TournamentView(discord.ui.View):
                             {}
                             """.format("\n".join(phases_df["size"].values.flatten()))
 
-        except (KeyError, TypeError) as e:
+        except (KeyError, TypeError):
             phases_name_field = ''
             phases_type_field = ''
             phases_size_field = ''
@@ -130,19 +130,19 @@ class TournamentView(discord.ui.View):
             players_field = """
                             {}
                             """.format("\n".join(players_df["name"].values.flatten()))
-        except (KeyError, TypeError) as e:
+        except (KeyError, TypeError):
             players_field = ''
 
         try:
             teams_field = """
                             {}
                             """.format("\n".join(teams_df["name"].values.flatten()))
-        except (KeyError, TypeError) as e:
+        except (KeyError, TypeError):
             teams_field = ''
 
         try:
             standings_field = ''
-        except (KeyError, TypeError) as e:
+        except (KeyError, TypeError):
             standings_field = ''
 
         embed = discord.Embed(
@@ -204,13 +204,16 @@ class TournamentView(discord.ui.View):
 
     @discord.ui.button(label="Start next phase (admin only)", row=1, style=discord.ButtonStyle.primary)
     async def start_button_callback(self, button, interaction):
-        t: Tournament = self.manager.getTournament(self.tournament_name)
-        t.get_current_phase().init_bracket()
-        t.get_current_phase().start()
+        if self.manager.is_admin(self.tournament_name, interaction.user.id):
+            t: Tournament = self.manager.get_tournament(self.tournament_name)
+            # TODO: move this function into tournamentMgr and return (success, feedback)
+            t.get_current_phase().init_bracket()
+            t.get_current_phase().start()
+            await interaction.response.send_message(f'{t.get_current_phase().name} is now started.')
 
     @discord.ui.button(label="Get my next match", disabled=True, row=2, style=discord.ButtonStyle.primary)
     async def next_button_callback(self, button, interaction):
-        t: Tournament = self.manager.getTournament(self.tournament_name)
+        t: Tournament = self.manager.get_tournament(self.tournament_name)
         t.get_current_phase().next_match(t.get_player(interaction.user.mention).team)
 
     @discord.ui.button(label="Delete Tournament (admin only)", row=3, style=discord.ButtonStyle.danger)
@@ -232,7 +235,7 @@ class DeleteConfirmationView(discord.ui.View):
 
     @discord.ui.button(label="Delete", row=0, style=discord.ButtonStyle.danger)
     async def confirmation_button_callback(self, button, interaction):
-        success, feedback = self.view.manager.deleteTournament(
+        success, feedback = self.view.manager.delete_tournament(
             self.view.tournament_name, interaction.user.id)
         if success:
             button.disabled = True
