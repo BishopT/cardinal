@@ -1,3 +1,4 @@
+import atexit
 import logging
 
 import discord
@@ -9,7 +10,15 @@ logger.setLevel(level=utils.LOG_LEVEL)
 log_file_handler = logging.FileHandler(
     filename=utils.LOG_FILE, encoding=utils.LOG_FILE_ENC, mode='w')
 logger.addHandler(log_file_handler)
+
+
 # discord.utils.setup_logging(handler=log_file_handler, level=LOG_LEVEL)
+
+def exit_handler():
+    print('Exit catched!')
+
+
+atexit.register(exit_handler)
 
 intents = discord.Intents.default()
 # intents.message_content = True
@@ -33,4 +42,5 @@ cogs_list = [
 for cog in cogs_list:
     bot.load_extension(f'cogs.{cog}')
 
+# bot.help_command = SupremeHelpCommand()
 bot.run(utils.TOKEN)

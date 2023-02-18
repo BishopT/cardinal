@@ -1,11 +1,14 @@
 import math
+
 import pandas as pd
 
 
-class Player():
+class Player:
 
     def __init__(self, name):
         self.__init__(name, None)
+        self.team = None
+        self.id = None
 
     def __init__(self, name, elo):
         self.id = None
@@ -13,13 +16,13 @@ class Player():
         self.elo = elo
         self.team = None
 
-    def set_id(self, id):
-        self.id = id
+    def set_id(self, player_id):
+        self.id = player_id
 
     def set_team(self, team):
         self.team = team
 
-    def asSeries(self):
+    def as_series(self):
         return pd.Series(
             [self.name, self.elo, self.team],
             index=["name", "elo", "team"]
@@ -29,11 +32,11 @@ class Player():
         return f'{self.name} ({self.team})'
 
 
-class Team():
+class Team:
 
-    def __init__(self, name: str, size: int):
+    def __init__(self, name: str):
         self.name = name
-        self.size = size
+        self.size = 0
         self.elo = 0
         self.points = 0
         self.goals_scored = 0
@@ -42,14 +45,15 @@ class Team():
     def set_name(self, name: str):
         self.name = name
 
-    def asSeries(self):
-        return pd.Series([self.name, self.elo, self.points, self.goals_scored - self.goals_taken], index=["name", "elo", "points", "goals diff"])
+    def as_series(self):
+        return pd.Series([self.name, self.elo, self.points, self.goals_scored - self.goals_taken],
+                         index=["name", "elo", "points", "goals diff"])
 
     def __repr__(self):
         return f'{self.name}'
 
 
-class Match():
+class Match:
 
     def __init__(self, id: str, bo: int, blue_team: str, red_team: str):
         self.id = id
@@ -69,12 +73,7 @@ class Match():
         return {self.blue_team: self.bo_blue_score, self.red_team: self.bo_red_score}
 
     def add_game_result(self, blue_score, red_score):
-        # print(f'self.bo_blue_score={self.bo_blue_score}')
-        # print(f'self.bo_red_score={self.bo_red_score}')
-        # print(f'self.blue_score={self.blue_score}')
-        # print(f'self.red_score={self.red_score}')
-        # print(f'self.ended={self.ended}')
-        if (len(self.blue_score) < self.bo and not self.ended):
+        if len(self.blue_score) < self.bo and not self.ended:
             self.blue_score.append(blue_score)
             self.red_score.append(red_score)
         else:
@@ -101,10 +100,10 @@ class Match():
             self.ended = True
         return self.ended
 
-    def get_winner(self):
-        if (self.bo_blue_score == self.bo_red_score):
+    def get_winner(self) -> str:
+        if self.bo_blue_score == self.bo_red_score:
             return None
-        if (self.bo_blue_score > self.bo_red_score):
+        if self.bo_blue_score > self.bo_red_score:
             return self.blue_team
         else:
             return self.red_team
