@@ -2,7 +2,6 @@ import configparser
 import logging
 import os
 
-import discord
 from dotenv import load_dotenv
 
 # MAGIC_VALUES
@@ -33,14 +32,10 @@ conf = configparser.ConfigParser()
 conf.read(CONFIG_FILE)
 
 # bot section
-OWNER_ID = conf.get(CONF_SECTION_BOT, CONF_PROP_OWNER)
+OWNER_ID = int(conf.get(CONF_SECTION_BOT, CONF_PROP_OWNER))
 # BOT_CMD_PREFIX = conf.get(CONF_SECTION_BOT, CONF_PROP_BOT_CMD_PREFIX)
 # logging section
 LOG_FILE = conf.get(CONF_SECTION_LOGGING, CONF_PROP_LOG_FILE)
 LOG_FILE_ENC = conf.get(CONF_SECTION_LOGGING, CONF_PROP_LOG_FILE_ENC)
 LOG_LEVEL = logging.getLevelName(
     conf.get(CONF_SECTION_LOGGING, CONF_PROP_LOG_LEVEL))
-
-
-def is_owner(ctx: discord.ApplicationContext):
-    return ctx.user.id == OWNER_ID
