@@ -1,10 +1,10 @@
-# cardinal
+# Cardinal
 
 discord bot to create, manage and run tournaments right into guilds
 
 written in python with [Pycord](https://pycord.dev/)
 
-## run
+## Run
 
 Register your bot in discord developer portal to generate a token.
 
