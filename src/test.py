@@ -1,14 +1,10 @@
-import json
-
-import json_patch
-from model import Player, Team
-from ruleset import SimpleElimination
-from tournament import Tournament
+from tournapy.core.ruleset import RulesetEnum
+from tournapy.tournament import Tournament
 
 tourney = Tournament()
 tourney.setup("Bishop", "test tournament", 2)
 
-tourney.add_phase(1, SimpleElimination("qualif", 16))
+tourney.add_phase(0, RulesetEnum.SIMPLE_ELIMINATION.get_ruleset("playoff", 16, 3))
 
 tourney.add_player("Bishop", 1250)
 tourney.add_player("Zylbyrom", 1200)
@@ -52,11 +48,16 @@ print('============== PLAYERS ====================')
 print(tourney.df_players())
 print('')
 
-tourney.init()
-qualif = tourney.get_phase(1)
-bracket = qualif.init_bracket(3)
-print(json.dumps(bracket, indent=4))
-
+# tourney.init()
+qualif = tourney.get_current_phase()
+teams_names = tourney.df_teams()['name']
+for team_name in teams_names:
+    # next_phase.add_team(t.get_team(team_name))
+    qualif.add_team(tourney.teams_dict[team_name])
+bracket = qualif.init_bracket()
+print('============== BRACKET ====================')
+print(tourney.get_current_phase().get_bracket())
+print('')
 print(tourney.get_current_phase().get_standings())
 
 phase = tourney.get_current_phase()
@@ -73,7 +74,6 @@ print('')
 
 m = phase.next_match('fuka')
 phase.report_match_result(m, (1, 2), (3, 2), (4, 1))
-
 
 m = phase.next_match('NiWi')
 phase.report_match_result(m, (0, 8), (6, 1), (5, 6))

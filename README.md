@@ -1,6 +1,6 @@
 # cardinal
 
-discord bot to create, manage and run tournaments right into guilds 
+discord bot to create, manage and run tournaments right into guilds
 
 written in python with [Pycord](https://pycord.dev/)
 
@@ -15,7 +15,9 @@ DISCORD_TOKEN=<your discord bot token>
 CARDINAL_CONF=path/to/cardinal.ini
 ```
 
-`python src/cardinal_bot.py`
+change the `OwnerId` value to your discord ID so that you own the bot instance
+
+run `python src/cardinal_bot.py`
 
 ## Usage
 
