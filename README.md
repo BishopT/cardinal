@@ -19,8 +19,8 @@ CARDINAL_CONF=path/to/cardinal.ini
 
 ## Usage
 
-Start by creating tournament by using slash command `/tournament create`
+Start by creating tournament by using slash command `/tournaments create`
 
 One a tournament is created, some actions are available directly from UI (e.g. buttons)
 
-For all others action search for slash commands in `/tournament`
+For all others action search for slash commands in `/tournaments`
