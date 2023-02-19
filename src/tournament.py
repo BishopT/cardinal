@@ -1,5 +1,3 @@
-from typing import List, Dict
-
 import pandas as pd
 
 from model import Player, Team
@@ -12,10 +10,10 @@ class Tournament:
         self.name = None
         self.team_size = None
         self.registration_opened = False
-        self.admins: List[str] = []
-        self.players_dict: dict[Player] = {}
-        self.teams_dict: dict[Team] = {}
-        self.phases: Dict[int, RuleSet] = {}
+        self.admins: list[str] = []
+        self.players_dict: dict[str, Player] = {}
+        self.teams_dict: dict[str, Team] = {}
+        self.phases: dict[int, RuleSet] = {}
         self.current_phase_idx = 0
 
     def setup(self, organizer, name, team_size):
@@ -49,6 +47,9 @@ class Tournament:
                     return False, f'{name} is not subscribed to tournament'
         else:
             return False, f'Cannot add any player to {team_name} because team is already complete'
+
+    def get_team_players(self, team_name: str):
+        return list(filter(lambda p: p.team == team_name, self.players_dict.values()))
 
     def add_phase(self, order: int, ruleset: RuleSet):
         self.phases[order] = ruleset

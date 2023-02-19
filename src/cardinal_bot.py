@@ -21,16 +21,22 @@ def exit_handler():
 atexit.register(exit_handler)
 
 intents = discord.Intents.default()
-# intents.message_content = True
+intents.members = True
 
-bot = discord.Bot(owner_id=utils.OWNER_ID)
+bot = discord.Bot(owner_id=utils.OWNER_ID, intents=intents)
 
 
 @bot.event
 async def on_ready():
     print(f'{bot.user.name} has connected to Discord and following guilds:')
     for guild in bot.guilds:
-        print(f'{guild.name} (id: {guild.id})')
+        print(f'{guild.name} (id: {guild.id}):')
+        # guild.fetch_members()
+        # for channel in guild.text_channels:
+        #     # c: discord.TextChannel = await guild.fetch_channel(channel.id)
+        #     # print(f'  {c.name}:')
+        #     for member in channel.members:
+        #         print(f'    {member.name}')
 
 
 cogs_list = [
