@@ -1,12 +1,11 @@
-import math
-
 import discord
+import math
 from discord.ext import commands
 
-import model
-import ruleset
-from ruleset import RulesetEnum
-from tournament import Tournament, TournamentsMgr
+from tournapy.core.model import Match
+from tournapy.core.ruleset import RulesetEnum
+from tournapy.manager import TournamentManager as TournamentsMgr
+from tournapy.tournament import Tournament
 
 
 def setup(bot):  # this is called by Pycord to set up the cog
@@ -48,7 +47,7 @@ class Tournaments(commands.Cog):
         t: Tournament = self.manager.get_tournament(ctx.options['tournament_name'])
         return t.teams_dict.keys()
 
-    @tournaments.command(name='create', description="create a tournament")
+    @tournaments.command(name='create', description="create a tournapy")
     async def create(self, ctx: discord.ApplicationContext, tournament_name: str, team_size: int, logo_url=None):
         if self.manager.create_tournament(tournament_name, team_size, str(ctx.user.id)):
             self.view = TournamentView(ctx, tournament_name, self.manager, logo_url)
@@ -58,19 +57,19 @@ class Tournaments(commands.Cog):
             await ctx.respond(
                 f'Tournament ***{tournament_name}*** already exists. Please delete first or choose another name.')
 
-    @tournaments.command(name='del', description="delete a tournament")
+    @tournaments.command(name='del', description="delete a tournapy")
     async def delete_command(self, ctx: discord.ApplicationContext,
                              tournament_name: discord.Option(str, autocomplete=ac_tournaments)):
         success, feedback = self.manager.delete_tournament(
             tournament_name, str(ctx.user.id))
         await ctx.respond(feedback)
 
-    phase = tournaments.create_subgroup("phase", "manage tournament phases")
+    phase = tournaments.create_subgroup("phase", "manage tournapy phases")
 
-    @phase.command(name='add', description="add a tournament phase")
+    @phase.command(name='add', description="add a tournapy phase")
     async def add_phase(self, ctx: discord.ApplicationContext,
                         tournament_name: discord.Option(str, autocomplete=ac_tournaments), phase_name: str,
-                        rules_name: discord.Option(str, choices=ruleset.RulesetEnum.as_list()),
+                        rules_name: discord.Option(str, choices=RulesetEnum.as_list()),
                         pool_size: discord.Option(int, autocomplete=ac_pool),
                         bo: discord.Option(int, autocomplete=ac_bo)):
         success, feedback = self.manager.add_phase(tournament_name, phase_name,
@@ -84,7 +83,7 @@ class Tournaments(commands.Cog):
         else:
             await ctx.respond(feedback)
 
-    player = tournaments.create_subgroup("player", "manage tournament players")
+    player = tournaments.create_subgroup("player", "manage tournapy players")
 
     @player.command(name="add", description="register an new player")
     async def add_player(self, ctx: discord.ApplicationContext,
@@ -162,8 +161,8 @@ class TournamentView(discord.ui.View):
             standings_field = ''
 
         embed = discord.Embed(
-            title=f'{t.name} tournament',
-            description=f'Welcome in {t.name} tournament. Register, get your next opponents, follow results... Stay '
+            title=f'{t.name} tournapy',
+            description=f'Welcome in {t.name} tournapy. Register, get your next opponents, follow results... Stay '
                         f'tuned!',
             # Pycord provides a class with default colors you can choose from
             color=discord.Colour.gold(),
@@ -235,7 +234,7 @@ class TournamentView(discord.ui.View):
         t: Tournament = self.manager.get_tournament(self.tournament_name)
         player = t.players_dict[interaction.user.display_name]
         print(f'next match for my team : player={player}, team={player.team}')
-        m: model.Match = t.get_current_phase().next_match(t.players_dict[interaction.user.display_name].team)
+        m: Match = t.get_current_phase().next_match(t.players_dict[interaction.user.display_name].team)
         # TODO: create chat room with all participants
         v: MatchView = MatchView(self.manager,
                                  self.tournament_name,

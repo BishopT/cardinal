@@ -1,6 +1,6 @@
-import atexit
 import logging
 
+import atexit
 import discord
 
 import utils

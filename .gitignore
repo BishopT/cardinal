@@ -1,5 +1,6 @@
-cardinal-bot-env/*
-src/__pycache__/*
-src/cogs/__pycache__/*
+cardinal-bot-env/
+src/__pycache__/
+src/cogs/__pycache__/
+idea/
 .env
 *.log
