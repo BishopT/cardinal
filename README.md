@@ -4,6 +4,12 @@ discord bot to create, manage and run tournaments right into guilds
 
 written in python with [Pycord](https://pycord.dev/)
 
+## Dependencies
+
+- python 3.8 or above
+- pandas
+- [tournapy](https://github.com/BishopT/tournapy)
+
 ## Run
 
 Register your bot in discord developer portal to generate a token.
