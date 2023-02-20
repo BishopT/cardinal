@@ -8,6 +8,7 @@ written in python with [Pycord](https://pycord.dev/)
 
 - python 3.8 or above
 - pandas
+- pycord
 - [tournapy](https://github.com/BishopT/tournapy)
 
 ## Run
