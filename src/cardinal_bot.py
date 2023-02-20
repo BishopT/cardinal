@@ -1,7 +1,10 @@
 import logging
+import pickle
 
 import atexit
 import discord
+from discord.ext.commands import Bot
+from discord.ext.commands import MinimalHelpCommand
 
 import utils
 
@@ -12,10 +15,11 @@ log_file_handler = logging.FileHandler(
 logger.addHandler(log_file_handler)
 
 
-# discord.utils.setup_logging(handler=log_file_handler, level=LOG_LEVEL)
-
 def exit_handler():
     print('Exit catched!')
+    with open(utils.TOURNAMENT_DATA_FILE_PATH, 'wb') as file:
+        # Pickle the 'data' dictionary using the highest protocol available.
+        pickle.dump(bot.cogs['Tournaments'].manager, file, pickle.HIGHEST_PROTOCOL)
 
 
 atexit.register(exit_handler)
@@ -23,7 +27,7 @@ atexit.register(exit_handler)
 intents = discord.Intents.default()
 intents.members = True
 
-bot = discord.Bot(owner_id=utils.OWNER_ID, intents=intents)
+bot = Bot(owner_id=utils.OWNER_ID, intents=intents)
 
 
 @bot.event
@@ -48,5 +52,10 @@ cogs_list = [
 for cog in cogs_list:
     bot.load_extension(f'cogs.{cog}')
 
-# bot.help_command = SupremeHelpCommand()
+with open(utils.TOURNAMENT_DATA_FILE_PATH, 'rb') as f:
+    # The protocol version used is detected automatically, so we do not
+    # have to specify it.
+    bot.cogs['Tournaments'].manager = pickle.load(f)
+
+bot.help_command = MinimalHelpCommand()
 bot.run(utils.TOKEN)
