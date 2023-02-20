@@ -1,7 +1,7 @@
-cardinal-bot-env/*
-src/__pycache__/*
-src/cogs/__pycache__/*
-.idea/*
+cardinal-bot-env/
+src/__pycache__/
+src/cogs/__pycache__/
+.idea/
 .env
 *.log
 /tournaments.dat
