@@ -2,6 +2,7 @@ import discord
 import math
 from discord.ext import commands
 
+import tournapy.rocketleague.rankenum
 from tournapy.core.model import Match
 from tournapy.core.ruleset import RulesetEnum
 from tournapy.manager import TournamentManager as TournamentsMgr
@@ -143,11 +144,9 @@ class Tournaments(commands.Cog):
     async def get_match(self, ctx: discord.ApplicationContext,
                         tournament_name: discord.Option(str, autocomplete=ac_tournaments),
                         match_id: discord.Option(str, autocomplete=ac_matches)):
-        m = self.manager.get_tournament(tournament_name).get_current_phase().get_match(match_id)
-        v: MatchView = MatchView(self.manager,
-                                 tournament_name,
-                                 self.manager.get_tournament(tournament_name).current_phase_idx,
-                                 m.id, ctx.channel, ctx.user)
+        t = self.manager.get_tournament(tournament_name)
+        m = t.get_current_phase().get_match(match_id)
+        v: MatchView = MatchView(t, m, ctx.channel, ctx.user)
         main, embed = v.get_match_presentation()
         await ctx.response.send_message(content=main, embed=embed, view=v)
 
@@ -168,13 +167,16 @@ class TournamentView(discord.ui.View):
 
     def __init__(self, ctx, tournament_name: str, manager: TournamentsMgr, logo_url: str):
         super().__init__(timeout=None)
-        self.ctx = ctx
+        self.ctx: discord.ApplicationContext = ctx
         self.tournament_name = tournament_name
         self.manager: TournamentsMgr = manager
+        self.tournament = self.manager.get_tournament(self.tournament_name)
         if logo_url is not None:
             self.logo_url = logo_url
+            self.tournament.logo_url = logo_url
         else:
             self.logo_url = ctx.user.avatar.url
+            self.tournament.logo_url = ctx.user.avatar.url
 
     def get_tournament_presentation(self):
         t: Tournament = self.manager.get_tournament(self.tournament_name)
@@ -233,8 +235,9 @@ class TournamentView(discord.ui.View):
         # footers can have icons too
         embed.set_footer(text=f'Bishop > God.')
         embed.set_author(name=f'{self.ctx.user.name}',
-                         icon_url=self.ctx.user.avatar.url)
-        embed.set_thumbnail(url=self.logo_url)
+                         icon_url=discord.utils.get(self.ctx.interaction.guild.members,
+                                                    id=int(self.tournament.admins[0])).avatar.url)
+        embed.set_thumbnail(url=self.tournament.logo_url)
         # url="https://cdn.discordapp.com/attachments/1062914387934990459/1063874292753903676/Logo_Transparent_noir.png")
         # embed.set_image(
         #     url="https://cdn.discordapp.com/attachments/1062914387934990459/1063874292753903676/Logo_Transparent_noir.png")
@@ -268,13 +271,15 @@ class TournamentView(discord.ui.View):
     @discord.ui.button(custom_id='button_update', label='Update', row=0, style=discord.ButtonStyle.secondary)
     async def update_button_callback(self, button, interaction):
         t: Tournament = self.manager.get_tournament(self.tournament_name)
-        if t.get_current_phase() is not None:
+        try:
             if t.get_current_phase().running:
                 b_next: discord.ui.button = self.get_item('button_next_game')
                 b_next.disabled = False
             if not t.get_current_phase().running:
-                b_start: discord.ui.button = self.view.get_item('button_start_phase')
+                b_start: discord.ui.button = self.get_item('button_start_phase')
                 b_start.disabled = False
+        except KeyError:
+            pass
         main, embed = self.get_tournament_presentation()
         await interaction.response.edit_message(content=main, embed=embed, view=self)
 
@@ -291,14 +296,8 @@ class TournamentView(discord.ui.View):
                        style=discord.ButtonStyle.primary)
     async def next_button_callback(self, button, interaction: discord.Interaction):
         t: Tournament = self.manager.get_tournament(self.tournament_name)
-        player = t.players_dict[interaction.user.display_name]
-        # print(f'next match for my team : player={player}, team={player.team}')
         m: Match = t.get_current_phase().next_match(t.players_dict[interaction.user.display_name].team)
-        # TODO: create chat room with all participants
-        v: MatchView = MatchView(self.manager,
-                                 self.tournament_name,
-                                 self.manager.get_tournament(self.tournament_name).current_phase_idx,
-                                 m.id, interaction.message.channel, interaction.user)
+        v: MatchView = MatchView(t, m, interaction.message.channel, interaction.user)
         main, embed = v.get_match_presentation()
         await interaction.response.send_message(content=main, embed=embed, view=v)
 
@@ -306,6 +305,21 @@ class TournamentView(discord.ui.View):
     async def del_button_callback(self, button, interaction):
         await interaction.response.edit_message(content=f'Please confirm you want to delete {self.tournament_name}',
                                                 view=DeleteConfirmationView(self))
+
+    # TODO: use Enum ; configure authorized ranks
+    @staticmethod
+    def select_rank_list():
+        rank_options = list(map(lambda rank: discord.SelectOption(value=str(rank[1]),
+                                                                  label=rank[0],
+                                                                  emoji=rank[2]),
+                                tournapy.rocketleague.ranks.RankEnum.as_list()))
+        return rank_options
+
+    @discord.ui.select(placeholder='Select your rank!', custom_id='select_rank', min_values=1, max_values=1,
+                       options=select_rank_list())
+    async def rank_callback(self, select: discord.ui.Select, interaction: discord.Interaction):
+        print(select.values)
+        await interaction.response.send_message(f'You have selected {select.values[0]} rank!')
 
 
 class DeleteConfirmationView(discord.ui.View):
@@ -333,25 +347,19 @@ class DeleteConfirmationView(discord.ui.View):
 
 class MatchView(discord.ui.View):
 
-    def __init__(self, manager: TournamentsMgr, tournament_name: str, phase_idx: int, match_id: str,
-                 ctx_channel, ctx_user):
+    def __init__(self, tournament: Tournament, match: Match, ctx_channel, ctx_user):
         super().__init__(timeout=None)
-        # TODO: clean args; manager, tournament_name,  phase_idx, match_id should be replaceable by a match object
-        self.manager: TournamentsMgr = manager
-        self.tournament_name: str = tournament_name
-        self.phase_idx: id = phase_idx
-        self.match_id: str = match_id
-        self.match = self.manager.get_tournament(self.tournament_name).get_phase(self.phase_idx).get_match(
-            self.match_id)
+        self.tournament = tournament
+        self.admins = tournament.admins
+        self.blue_players = tournament.get_team_players(match.blue_team)
+        self.red_players = tournament.get_team_players(match.red_team)
+        self.match = match
         self.match_channel_name = f'{self.match.id}_{self.match.blue_team}_{self.match.red_team}'.lower()
-        # print(f'self.match_channel_name={self.match_channel_name}')
-        self.match_channel = discord.utils.get(ctx_channel.category.channels,
-                                               name=self.match_channel_name)
-        if self.match_channel is not None:
-            self.get_item('button_room').disabled = True
-        # print(f'self.match_channel={self.match_channel}')
+        self.match_channel = discord.utils.get(ctx_channel.category.channels, name=self.match_channel_name)
         self.blue_voice = discord.utils.get(ctx_channel.category.channels, name=self.match.blue_team)
         self.red_voice = discord.utils.get(ctx_channel.category.channels, name=self.match.red_team)
+        if self.match_channel is not None:
+            self.get_item('button_room').disabled = True
         if self.blue_voice and self.red_voice is not None:
             self.get_item('button_vocal').disabled = True
 
@@ -371,30 +379,16 @@ class MatchView(discord.ui.View):
         if self.blue_voice and self.red_voice is not None:
             embed.add_field(name='Blue vocal', value=self.blue_voice.mention, inline=True)
             embed.add_field(name='Red vocal', value=self.red_voice.mention, inline=True)
-
         for r in range(min(len(m.blue_score), len(m.red_score))):
-            embed.add_field(name=f'Game {r}', value=f'[{m.blue_score[r]} - {m.red_score[r]}]', inline=False)
-        # TODO: add text channel & voice channels with try except
+            embed.add_field(name=f'Game {r + 1}', value=f'[{m.blue_score[r]} - {m.red_score[r]}]', inline=False)
         return self.main, embed
 
     @discord.ui.button(custom_id='button_room', label="Create Room", style=discord.ButtonStyle.primary)
     async def room_callback(self, button, interaction: discord.Interaction):
         button.disabled = True
         if self.match_channel is None:
-            # TODO: use a permission generator
-            overwrites = {
-                interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            }
-            for admin_id in self.manager.get_tournament(self.tournament_name).admins:
-                admin_member = interaction.guild.get_member(int(admin_id))
-                overwrites[admin_member] = discord.PermissionOverwrite(read_messages=True)
-            for blue_player in self.manager.get_tournament(self.tournament_name).get_team_players(self.match.blue_team):
-                blue_member = discord.utils.find(lambda m: m.display_name == blue_player.name,
-                                                 interaction.guild.members)
-                overwrites[blue_member] = discord.PermissionOverwrite(read_messages=True)
-            for red_player in self.manager.get_tournament(self.tournament_name).get_team_players(self.match.red_team):
-                red_member = discord.utils.find(lambda m: m.display_name == red_player.name, interaction.guild.members)
-                overwrites[red_member] = discord.PermissionOverwrite(read_messages=True)
+            # TODO fix that
+            overwrites = MatchView.get_overwrites(interaction.guild, self.admins, self.blue_players + self.red_players)
             self.match_channel = await interaction.guild.create_text_channel(
                 name=self.match_channel_name,
                 category=interaction.channel.category,
@@ -405,43 +399,28 @@ class MatchView(discord.ui.View):
     @discord.ui.button(custom_id='button_vocal', label="Create Vocal", style=discord.ButtonStyle.primary)
     async def vocal_callback(self, button, interaction):
         button.disabled = True
-
         if self.blue_voice is None:
-            # TODO: use a permission generator
-            overwrites_blue = {
-                interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            }
-            for admin_id in self.manager.get_tournament(self.tournament_name).admins:
-                admin_member = interaction.guild.get_member(int(admin_id))
-                overwrites_blue[admin_member] = discord.PermissionOverwrite(read_messages=True)
-            for blue_player in self.manager.get_tournament(self.tournament_name).get_team_players(self.match.blue_team):
-                blue_member = discord.utils.find(lambda m: m.display_name == blue_player.name,
-                                                 interaction.guild.members)
-                overwrites_blue[blue_member] = discord.PermissionOverwrite(read_messages=True)
+            overwrites_blue = MatchView.get_overwrites(interaction.guild, self.admins, self.blue_players)
             self.blue_voice = await interaction.guild.create_voice_channel(name=f'{self.match.blue_team}',
                                                                            category=interaction.channel.category,
                                                                            overwrites=overwrites_blue)
         if self.red_voice is None:
-            # TODO: use a permission generator
-            overwrites_red = {
-                interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-            }
-            for admin_id in self.manager.get_tournament(self.tournament_name).admins:
-                admin_member = interaction.guild.get_member(int(admin_id))
-                overwrites_red[admin_member] = discord.PermissionOverwrite(read_messages=True)
-            for red_player in self.manager.get_tournament(self.tournament_name).get_team_players(self.match.red_team):
-                red_member = discord.utils.find(lambda m: m.display_name == red_player.name, interaction.guild.members)
-                overwrites_red[red_member] = discord.PermissionOverwrite(read_messages=True)
+            overwrites_red = MatchView.get_overwrites(interaction.guild, self.admins, self.red_players)
             self.red_voice = await interaction.guild.create_voice_channel(name=f'{self.match.red_team}',
                                                                           category=interaction.channel.category,
                                                                           overwrites=overwrites_red)
-
         m, e = self.get_match_presentation()
         await interaction.response.edit_message(content=m, embed=e, view=self)
 
+    @discord.ui.button(custom_id='button_report', label="Report Game Result", style=discord.ButtonStyle.primary)
+    async def report_callback(self, button, interaction):
+        modal = MatchResultModal(self, title="Report game result")
+        await interaction.response.send_modal(modal)
+
     @discord.ui.button(label="Ask for help", style=discord.ButtonStyle.primary)
     async def help_callback(self, button, interaction: discord.Interaction):
-        for admin_id in self.manager.get_tournament(self.tournament_name).admins:
+        # TODO retrieve admins
+        for admin_id in self.admins:
             admin_member: discord.Member = interaction.guild.get_member(int(admin_id))
             if admin_member.dm_channel is None:
                 await admin_member.create_dm()
@@ -449,3 +428,38 @@ class MatchView(discord.ui.View):
                 f'{interaction.user.mention} asked for help on match {self.match.id} ({interaction.message.jump_url})')
         await interaction.response.send_message(
             f'Tournament admins have been notified. They will come back to you {interaction.user.mention}.')
+
+    @staticmethod
+    def get_overwrites(guild: discord.Guild, admins: list[str], players: list[str]) -> \
+            dict[discord.Role, discord.PermissionOverwrite]:
+        """
+
+        :rtype: dict[discord.Role, discord.PermissionOverwrite]
+        """
+        overwrites = {
+            guild.default_role: discord.PermissionOverwrite(read_messages=False)
+        }
+        for admin_id in admins:
+            admin_member = guild.get_member(int(admin_id))
+            overwrites[admin_member] = discord.PermissionOverwrite(read_messages=True)
+        for player in players:
+            member = discord.utils.find(lambda m: m.display_name == player.name, guild.members)
+            overwrites[member] = discord.PermissionOverwrite(read_messages=True)
+        return overwrites
+
+
+class MatchResultModal(discord.ui.Modal):
+    def __init__(self, match_view: MatchView, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.match_view = match_view
+        game_to_report = len(match_view.match.blue_score) + 1
+        self.title = f'Game {game_to_report}'
+        self.add_item(discord.ui.InputText(label=f'Team {match_view.match.blue_team}'))
+        self.add_item(discord.ui.InputText(label=f'Team {match_view.match.red_team}'))
+
+    async def callback(self, interaction: discord.Interaction):
+        self.match_view.tournament.get_current_phase().report_match_result(self.match_view.match,
+                                                                           (self.children[0].value,
+                                                                            self.children[1].value))
+        m, e = self.match_view.get_match_presentation()
+        await interaction.response.edit_message(content=m, embed=e)
