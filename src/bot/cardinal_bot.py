@@ -3,16 +3,19 @@ import pickle
 
 import atexit
 import discord
+import sys
 from discord.ext.commands import Bot
 from discord.ext.commands import MinimalHelpCommand
 
-import utils
+from bot import utils
 
 logger = logging.getLogger('discord')
 logger.setLevel(level=utils.LOG_LEVEL)
 log_file_handler = logging.FileHandler(
     filename=utils.LOG_FILE, encoding=utils.LOG_FILE_ENC, mode='w')
 logger.addHandler(log_file_handler)
+
+print(f'pythonpath={sys.path}')
 
 
 def exit_handler():
@@ -46,16 +49,20 @@ async def on_ready():
 cogs_list = [
     'greetings',
     'admin',
-    'tournaments'
+    'tournaments',
+    'paginator'
 ]
 
 for cog in cogs_list:
     bot.load_extension(f'cogs.{cog}')
 
-with open(utils.TOURNAMENT_DATA_FILE_PATH, 'rb') as f:
-    # The protocol version used is detected automatically, so we do not
-    # have to specify it.
-    bot.cogs['Tournaments'].manager = pickle.load(f)
+try:
+    with open(utils.TOURNAMENT_DATA_FILE_PATH, 'rb') as f:
+        # The protocol version used is detected automatically, so we do not
+        # have to specify it.
+        bot.cogs['Tournaments'].manager = pickle.load(f)
+except FileNotFoundError:
+    print(f'{utils.TOURNAMENT_DATA_FILE_PATH} file does not exist. Ignoring...')
 
 bot.help_command = MinimalHelpCommand()
 bot.run(utils.TOKEN)
