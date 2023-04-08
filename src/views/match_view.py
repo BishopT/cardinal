@@ -21,7 +21,7 @@ class MatchView(discord.ui.View):
             self.get_item('button_room').disabled = True
         if self.blue_voice and self.red_voice is not None:
             self.get_item('button_vocal').disabled = True
-        self.main = f'{ctx_user.mention}, here is your next match: {self.match.blue_team} VS {self.match.red_team}'
+        self.main = f'{ctx_user.mention}, here is the match: {self.match.blue_team} VS {self.match.red_team}'
         if self.match.ended:
             self.get_item(custom_id='button_report').disabled = True
 
@@ -51,6 +51,7 @@ class MatchView(discord.ui.View):
         if self.match_channel is None:
             # TODO fix that
             overwrites = MatchView.get_overwrites(interaction.guild, self.admins, self.blue_players + self.red_players)
+            print(f'overwrites={overwrites}')
             self.match_channel = await interaction.guild.create_text_channel(
                 name=self.match_channel_name,
                 category=interaction.channel.category,
@@ -105,7 +106,8 @@ class MatchView(discord.ui.View):
             overwrites[admin_member] = discord.PermissionOverwrite(read_messages=True)
         for player in players:
             member = discord.utils.find(lambda m: m.display_name == player.name, guild.members)
-            overwrites[member] = discord.PermissionOverwrite(read_messages=True)
+            if member is not None:
+                overwrites[member] = discord.PermissionOverwrite(read_messages=True)
         return overwrites
 
 
@@ -121,8 +123,8 @@ class MatchResultModal(discord.ui.Modal):
 
     async def callback(self, interaction: discord.Interaction):
         self.match_view.tournament.get_current_phase().report_match_result(self.match_view.match,
-                                                                           (self.children[0].value,
-                                                                            self.children[1].value))
+                                                                           blue_score=int(self.children[0].value),
+                                                                           red_score=int(self.children[1].value))
         m, e = self.match_view.get_match_presentation()
         if self.match_view.match.ended:
             self.match_view.get_item(custom_id='button_report').disabled = True

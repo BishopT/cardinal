@@ -23,47 +23,82 @@ class TournamentView(discord.ui.View):
             self.tournament.logo_url = ctx.user.avatar.url
 
     @staticmethod
-    def get_player_field(tournament: Tournament):
+    def get_player_field(tournament: Tournament) -> str:
         players = list(
-            map(lambda x: f'{RocketLeagueRank.from_elo(x.elo).value["emoji"]} {x}',
+            map(lambda x: f'{RocketLeagueRank.from_elo(x.elo).value["emoji"]} {x.name}',
                 sorted(tournament.players_dict.values(), key=lambda p: -p.elo)))
         return """
                {}
                """.format("\n".join(players))
 
     @staticmethod
-    def get_team_field(tournament: Tournament):
-        teams = list(map(lambda team: f'{team} ({tournament.get_team_elo(team)})',
+    def get_team_field(tournament: Tournament) -> str:
+        teams = list(map(lambda team: f'{team} ({int(tournament.get_team_elo(team))})',
                          sorted(tournament.teams_dict.keys(), key=lambda t: -tournament.get_team_elo(t))))
         return """
                {}
                """.format("\n".join(teams))
 
+    @staticmethod
+    def get_stage_fields(tournament: Tournament) -> (str, str, str):
+        stage_names = list(map(lambda stage_key: f'{tournament.stages_dict[stage_key].name}',
+                               sorted(tournament.stages_dict.keys())))
+        stage_names_field = """
+                            {}
+                            """.format("\n".join(stage_names))
+        stage_rules = list(map(lambda stage_key: f'{tournament.stages_dict[stage_key].rules_type}',
+                               sorted(tournament.stages_dict.keys())))
+        stage_rules_field = """
+                            {}
+                            """.format("\n".join(stage_rules))
+        stage_sizes = list(map(lambda stage_key: f'{tournament.stages_dict[stage_key].pool_max_size}',
+                               sorted(tournament.stages_dict.keys())))
+        stage_sizes_field = """
+                            {}
+                            """.format("\n".join(stage_sizes))
+        return stage_names_field, stage_rules_field, stage_sizes_field
+
+    @staticmethod
+    def get_standings_field(tournament: Tournament) -> str:
+        for stage in tournament.stages_dict.values():
+            stage.get_standings()
+        teams_sorted_ga = sorted(tournament.teams_dict.values(),
+                                 key=lambda team: (team.goals_scored - team.goals_taken),
+                                 reverse=True)
+        teams_sorted = sorted(teams_sorted_ga, key=lambda team: team.points, reverse=True)
+        teams_sorted_format = list(
+            map(lambda team: f'{team.name} (PT={team.points} / GA={(team.goals_scored - team.goals_taken)})',
+                teams_sorted))
+        standings = [f'{i}: {x}' for i, x in enumerate(teams_sorted_format, start=1)]
+        return """
+               {}
+               """.format("\n".join(standings))
+
     def get_tournament_presentation(self):
         t: Tournament = self.manager.get_tournament(self.tournament_name)
 
-        phases_df = t.df_phases().astype('str')
+        # phases_df = t.df_phases().astype('str')
         try:
-            phases_name_field = """
-                            {}
-                            """.format("\n".join(phases_df["name"].values.flatten()))
-            phases_type_field = """
-                            {}
-                            """.format("\n".join(phases_df["type"].values.flatten()))
-            phases_size_field = """
-                            {}
-                            """.format("\n".join(phases_df["size"].values.flatten()))
-            bracket = self.manager.get_tournament(self.tournament_name).get_current_phase().bracket
+            #     phases_name_field = """
+            #                     {}
+            #                     """.format("\n".join(phases_df["name"].values.flatten()))
+            #     phases_type_field = """
+            #                     {}
+            #                     """.format("\n".join(phases_df["type"].values.flatten()))
+            #     phases_size_field = """
+            #                     {}
+            #                     """.format("\n".join(phases_df["size"].values.flatten()))
+            bracket = f'{self.manager.get_tournament(self.tournament_name).get_current_phase().bracket}'[-1024:]
         except (KeyError, TypeError):
-            phases_name_field = ''
-            phases_type_field = ''
-            phases_size_field = ''
+            #     phases_name_field = ''
+            #     phases_type_field = ''
+            #     phases_size_field = ''
             bracket = ''
 
-        try:
-            standings_field = ''
-        except (KeyError, TypeError):
-            standings_field = ''
+        # try:
+        #     standings_field = ''
+        # except (KeyError, TypeError):
+        #     standings_field = ''
 
         embed = discord.Embed(
             title=f'{t.name} tournament',
@@ -72,15 +107,19 @@ class TournamentView(discord.ui.View):
             # Pycord provides a class with default colors you can choose from
             color=discord.Colour.gold(),
         )
-        embed.add_field(name="Tournament description & rules", value="Bla Bla ", inline=False)
+        embed.add_field(name="Tournament description & rules", value="Contact tournament owner.", inline=False)
 
-        embed.add_field(name="STAGES NAMES", value=phases_name_field, inline=True)
-        embed.add_field(name="STAGES RULES", value=phases_type_field, inline=True)
-        embed.add_field(name="STAGES MAX TEAMS", value=phases_size_field, inline=True)
+        # embed.add_field(name="STAGE NAME", value=phases_name_field, inline=True)
+        # embed.add_field(name="STAGE RULE", value=phases_type_field, inline=True)
+        # embed.add_field(name="MAX TEAM", value=phases_size_field, inline=True)
+        stage_name_field, stage_rule_field, stage_size_field = TournamentView.get_stage_fields(t)
+        embed.add_field(name="STAGE NAME", value=stage_name_field, inline=True)
+        embed.add_field(name="STAGE RULE", value=stage_rule_field, inline=True)
+        embed.add_field(name="MAX TEAM", value=stage_size_field, inline=True)
 
         embed.add_field(name="PLAYERS", value=self.get_player_field(t), inline=True)
         embed.add_field(name="TEAMS", value=self.get_team_field(t), inline=True)
-        embed.add_field(name="STANDINGS", value=standings_field, inline=True)
+        embed.add_field(name="STANDINGS", value=TournamentView.get_standings_field(t), inline=True)
 
         embed.add_field(name="BRACKET", value=bracket, inline=False)
 
@@ -119,6 +158,7 @@ class TournamentView(discord.ui.View):
     @discord.ui.button(custom_id='button_update', label='Update', row=1, style=discord.ButtonStyle.secondary)
     async def update_button_callback(self, button, interaction):
         t: Tournament = self.manager.get_tournament(self.tournament_name)
+        # print(f't.get_current_phase()={t.get_current_phase()}')
         try:
             if t.get_current_phase().running:
                 b_next: discord.ui.button = self.get_item('button_next_game')
@@ -126,10 +166,26 @@ class TournamentView(discord.ui.View):
             if not t.get_current_phase().running:
                 b_start: discord.ui.button = self.get_item('button_start_phase')
                 b_start.disabled = False
+                b_start.label = f'Start {t.get_current_phase().name} (admin only)'
         except KeyError:
             pass
         main, embed = self.get_tournament_presentation()
         await interaction.response.edit_message(content=main, embed=embed, view=self)
+
+    @discord.ui.button(custom_id='button_get_my_team', label='Get my team', row=1, style=discord.ButtonStyle.secondary)
+    async def get_team_button_callback(self, button, interaction):
+        t: Tournament = self.manager.get_tournament(self.tournament_name)
+        if interaction.user.display_name in t.players_dict.keys():
+            team = t.players_dict[interaction.user.display_name].team
+            if team is not None:
+                await interaction.response.send_message(f'{interaction.user.mention}, your team is {team}',
+                                                        ephemeral=True)
+            else:
+                await interaction.response.send_message(f'{interaction.user.mention}, you are not part of a team',
+                                                        ephemeral=True)
+        else:
+            await interaction.response.send_message(
+                f'{interaction.user.mention}, you are not registered in this tournament', ephemeral=True)
 
     @discord.ui.button(custom_id='button_start_phase', label='Start next phase (admin only)', disabled=True, row=2,
                        style=discord.ButtonStyle.primary)
@@ -144,10 +200,14 @@ class TournamentView(discord.ui.View):
                        style=discord.ButtonStyle.primary)
     async def next_button_callback(self, button, interaction: discord.Interaction):
         t: Tournament = self.manager.get_tournament(self.tournament_name)
-        m: Match = t.get_current_phase().next_match(t.players_dict[interaction.user.display_name].team)
-        v: MatchView = MatchView(t, m, interaction.message.channel, interaction.user)
-        main, embed = v.get_match_presentation()
-        await interaction.response.send_message(content=main, embed=embed, view=v, ephemeral=True)
+        team = t.players_dict[interaction.user.display_name].team
+        m: Match = t.get_current_phase().next_match(team)
+        if m is not None:
+            v: MatchView = MatchView(t, m, interaction.message.channel, interaction.user)
+            main, embed = v.get_match_presentation()
+            await interaction.response.send_message(content=main, embed=embed, view=v, ephemeral=True)
+        else:
+            await interaction.response.send_message(content=f'No incoming match found for team {team}', ephemeral=True)
 
     @discord.ui.button(label='Delete Tournament (admin only)', row=3, style=discord.ButtonStyle.danger)
     async def del_button_callback(self, button, interaction):
